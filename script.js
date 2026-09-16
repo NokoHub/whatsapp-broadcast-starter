@@ -1,115 +1,27 @@
-const CONTACTS_KEY = "wa_broadcast_contacts_v1";
-const QUEUE_KEY = "wa_broadcast_queue_v1";
-
-let contacts = JSON.parse(localStorage.getItem(CONTACTS_KEY) || "[]");
-let queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
-
-const $ = (id) => document.getElementById(id);
-
-function save() {
-  localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
-}
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, c => ({
-    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
-  }[c]));
-}
-
-function render() {
-  $("totalContacts").textContent = contacts.length;
-  $("optInContacts").textContent = contacts.filter(c => c.optIn).length;
-  $("queuedMessages").textContent = queue.length;
-
-  $("contactTable").innerHTML = contacts.length ? contacts.map((c, i) => `
-    <tr>
-      <td>${escapeHtml(c.name)}</td>
-      <td>${escapeHtml(c.phone)}</td>
-      <td><span class="badge ${c.optIn ? "yes" : "no"}">${c.optIn ? "Ya" : "Tidak"}</span></td>
-      <td><input type="checkbox" class="contact-check" data-index="${i}" ${c.optIn ? "" : "disabled"}></td>
-    </tr>
-  `).join("") : `<tr><td colspan="4" class="empty">Belum ada kontak.</td></tr>`;
-
-  $("queueTable").innerHTML = queue.length ? queue.slice().reverse().map(q => `
-    <tr>
-      <td>${escapeHtml(q.time)}</td>
-      <td>${escapeHtml(q.name)}<br><small>${escapeHtml(q.phone)}</small></td>
-      <td>${escapeHtml(q.message)}</td>
-      <td><span class="badge yes">${escapeHtml(q.status)}</span></td>
-    </tr>
-  `).join("") : `<tr><td colspan="4" class="empty">Antrean masih kosong.</td></tr>`;
-
-  updateSelectedCount();
-}
-
-function updateSelectedCount() {
-  const selected = document.querySelectorAll(".contact-check:checked").length;
-  $("selectedCount").textContent = `${selected} kontak dipilih`;
-}
-
-$("contactForm").addEventListener("submit", e => {
-  e.preventDefault();
-  const name = $("nameInput").value.trim();
-  const phone = $("phoneInput").value.trim().replace(/\s+/g, "");
-  const optIn = $("optInInput").checked;
-
-  if (!/^62\d{8,15}$/.test(phone)) {
-    alert("Nomor gunakan format internasional, contoh: 628123456789.");
-    return;
-  }
-
-  contacts.push({ id: crypto.randomUUID(), name, phone, optIn });
-  save();
-  e.target.reset();
-  render();
-});
-
-document.addEventListener("change", e => {
-  if (e.target.classList.contains("contact-check")) updateSelectedCount();
-});
-
-$("queueBroadcast").addEventListener("click", () => {
-  const message = $("messageInput").value.trim();
-  const selected = [...document.querySelectorAll(".contact-check:checked")]
-    .map(el => contacts[Number(el.dataset.index)]);
-
-  if (!message) return alert("Tulis pesan terlebih dahulu.");
-  if (!selected.length) return alert("Pilih minimal satu kontak opt-in.");
-
-  const now = new Date().toLocaleString("id-ID");
-  selected.forEach(c => {
-    queue.push({
-      time: now,
-      name: c.name,
-      phone: c.phone,
-      message: message.replaceAll("{{nama}}", c.name),
-      status: "Menunggu API"
-    });
-  });
-
-  save();
-  $("messageInput").value = "";
-  document.querySelectorAll(".contact-check:checked").forEach(x => x.checked = false);
-  $("notice").textContent = `${selected.length} pesan masuk antrean. Belum dikirim ke WhatsApp.`;
-  $("notice").classList.remove("hidden");
-  render();
-});
-
-$("clearContacts").addEventListener("click", () => {
-  if (!contacts.length || confirm("Hapus semua kontak?")) {
-    contacts = [];
-    save();
-    render();
-  }
-});
-
-$("clearQueue").addEventListener("click", () => {
-  if (!queue.length || confirm("Kosongkan antrean?")) {
-    queue = [];
-    save();
-    render();
-  }
-});
-
-render();
+const CK="wa_broadcast_contacts_v2",TK="wa_broadcast_templates_v2",QK="wa_broadcast_queue_v2";
+let contacts=JSON.parse(localStorage.getItem(CK)||"[]"),templates=JSON.parse(localStorage.getItem(TK)||"[]"),queue=JSON.parse(localStorage.getItem(QK)||"[]");
+const $=id=>document.getElementById(id),uid=()=>crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random();
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const norm=v=>String(v||"").replace(/\D/g,"").replace(/^0/,"62");
+const valid=v=>/^62\d{8,15}$/.test(v);
+function save(){localStorage.setItem(CK,JSON.stringify(contacts));localStorage.setItem(TK,JSON.stringify(templates));localStorage.setItem(QK,JSON.stringify(queue))}
+function stats(){$("totalContacts").textContent=contacts.length;$("optInContacts").textContent=contacts.filter(c=>c.optIn).length;$("totalTemplates").textContent=templates.length}
+function renderContacts(){let q=$("searchInput").value.toLowerCase(),f=$("optFilter").value;let a=contacts.filter(c=>(c.name+" "+c.phone).toLowerCase().includes(q)&&(f==="all"||(f==="yes"&&c.optIn)||(f==="no"&&!c.optIn)));$("contactTable").innerHTML=a.length?a.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.phone)}</td><td><span class="badge ${c.optIn?"yes":"no"}">${c.optIn?"Opt-in":"Belum"}</span></td><td><button class="small-btn" onclick="removeContact('${c.id}')">Hapus</button></td></tr>`).join(""):`<tr><td colspan="4" class="empty">Belum ada kontak.</td></tr>`}
+function renderTemplates(){$("templateList").innerHTML=templates.length?templates.map(t=>`<div class="template-item"><strong>${esc(t.name)}</strong><p>${esc(t.message)}</p><button class="btn secondary" onclick="useTemplate('${t.id}')">Pakai</button> <button class="btn danger" onclick="removeTemplate('${t.id}')">Hapus</button></div>`).join(""):`<div class="empty">Belum ada template.</div>`;$("templateSelect").innerHTML='<option value="">-- Tulis pesan sendiri --</option>'+templates.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join("")}
+function renderRecipients(){let a=contacts.filter(c=>c.optIn);$("broadcastContacts").innerHTML=a.length?a.map(c=>`<label class="recipient"><input type="checkbox" class="recipient-check" data-id="${c.id}"><span><b>${esc(c.name)}</b><small>${esc(c.phone)}</small></span></label>`).join(""):`<div class="empty">Belum ada kontak opt-in.</div>`;updateSelected()}
+function renderQueue(){$("queueTable").innerHTML=queue.length?queue.slice().reverse().map(q=>`<tr><td>${esc(q.time)}</td><td>${esc(q.name)}<br><small>${esc(q.phone)}</small></td><td>${esc(q.message)}</td><td><span class="badge yes">${esc(q.status)}</span></td></tr>`).join(""):`<tr><td colspan="4" class="empty">Antrean kosong.</td></tr>`}
+function render(){stats();renderContacts();renderTemplates();renderRecipients();renderQueue()}
+function updateSelected(){$("selectedCount").textContent=`${document.querySelectorAll(".recipient-check:checked").length} dipilih`}
+$("contactForm").onsubmit=e=>{e.preventDefault();let n=$("nameInput").value.trim(),p=norm($("phoneInput").value),o=$("optInInput").checked;if(!valid(p))return alert("Nomor tidak valid. Contoh: 628123456789");if(contacts.some(c=>c.phone===p))return alert("Nomor sudah ada.");contacts.push({id:uid(),name:n,phone:p,optIn:o});save();e.target.reset();render()};
+$("csvInput").onchange=async e=>{let file=e.target.files[0];if(!file)return;let rows=(await file.text()).split(/\r?\n/).map(x=>x.trim()).filter(Boolean);if(rows.length<2)return alert("CSV harus punya header dan data.");let d=rows[0].includes(";")?";":",";let h=rows[0].split(d).map(x=>x.trim().toLowerCase()),ni=h.indexOf("name"),pi=h.indexOf("phone"),oi=h.indexOf("opt_in");if(ni<0||pi<0)return alert("Header wajib: name,phone. opt_in opsional.");let add=0,skip=0;rows.slice(1).forEach(r=>{let c=r.split(d).map(x=>x.trim().replace(/^"|"$/g,"")),n=c[ni]||"Tanpa nama",p=norm(c[pi]),raw=oi>=0?(c[oi]||"").toLowerCase():"false",o=["true","1","yes","ya","y"].includes(raw);if(!valid(p)||contacts.some(x=>x.phone===p)){skip++;return}contacts.push({id:uid(),name:n,phone:p,optIn:o});add++});save();render();e.target.value="";alert(`Import selesai. Ditambahkan: ${add}\nDilewati: ${skip}`)};
+$("exportCsv").onclick=()=>{let csv=["name,phone,opt_in",...contacts.map(c=>`"${c.name.replaceAll('"','""')}","${c.phone}",${c.optIn}`)].join("\n"),b=new Blob(["\ufeff"+csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="contacts.csv";a.click()};
+$("searchInput").oninput=renderContacts;$("optFilter").onchange=renderContacts;
+$("templateForm").onsubmit=e=>{e.preventDefault();templates.push({id:uid(),name:$("templateName").value.trim(),message:$("templateMessage").value.trim()});save();e.target.reset();render()};
+window.removeTemplate=id=>{templates=templates.filter(t=>t.id!==id);save();render()};window.removeContact=id=>{contacts=contacts.filter(c=>c.id!==id);save();render()};
+window.useTemplate=id=>{$("templateSelect").value=id;$("broadcastMessage").value=templates.find(t=>t.id===id)?.message||"";document.querySelector('[data-tab="broadcastTab"]').click()};
+$("templateSelect").onchange=e=>{let t=templates.find(x=>x.id===e.target.value);if(t)$("broadcastMessage").value=t.message};
+$("selectAll").onclick=()=>{document.querySelectorAll(".recipient-check").forEach(x=>x.checked=true);updateSelected()};
+document.addEventListener("change",e=>{if(e.target.classList.contains("recipient-check"))updateSelected()});
+$("queueBroadcast").onclick=()=>{let m=$("broadcastMessage").value.trim(),s=[...document.querySelectorAll(".recipient-check:checked")].map(x=>contacts.find(c=>c.id===x.dataset.id)).filter(Boolean);if(!m)return alert("Tulis atau pilih template.");if(!s.length)return alert("Pilih minimal satu kontak opt-in.");let time=new Date().toLocaleString("id-ID");s.forEach(c=>queue.push({time,name:c.name,phone:c.phone,message:m.replaceAll("{{nama}}",c.name),status:"Menunggu API"}));save();render();$("broadcastMessage").value="";$("notice").textContent=`${s.length} pesan masuk antrean. Belum dikirim ke WhatsApp.`;$("notice").classList.remove("hidden")};
+$("clearContacts").onclick=()=>{if(confirm("Hapus semua kontak?")){contacts=[];save();render()}};$("clearQueue").onclick=()=>{if(confirm("Kosongkan antrean?")){queue=[];save();render()}};
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".tab-content").forEach(x=>x.classList.remove("active"));b.classList.add("active");$(b.dataset.tab).classList.add("active")});render();
