@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WA Broadcast Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>WA Broadcast</h1>
+      <p>Dashboard kontak & kampanye</p>
+    </div>
+    <span class="status">● Demo mode</span>
+  </header>
+
+  <main class="container">
+    <section class="stats">
+      <div class="card"><span>Total kontak</span><strong id="totalContacts">0</strong></div>
+      <div class="card"><span>Opt-in</span><strong id="optInContacts">0</strong></div>
+      <div class="card"><span>Pesan antrean</span><strong id="queuedMessages">0</strong></div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Kontak</h2>
+            <p>Hanya kontak yang memberi izin broadcast yang dapat dipilih.</p>
+          </div>
+          <button class="btn secondary" id="clearContacts">Hapus semua</button>
+        </div>
+
+        <form id="contactForm" class="form-row">
+          <input id="nameInput" type="text" placeholder="Nama" required>
+          <input id="phoneInput" type="tel" placeholder="628123456789" required>
+          <label class="checkbox">
+            <input id="optInInput" type="checkbox">
+            Opt-in
+          </label>
+          <button class="btn" type="submit">Tambah</button>
+        </form>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Nama</th><th>Nomor</th><th>Opt-in</th><th>Pilih</th></tr>
+            </thead>
+            <tbody id="contactTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Buat broadcast</h2>
+        <p class="muted">Demo ini belum mengirim pesan ke WhatsApp. API resmi akan disambungkan pada tahap berikutnya.</p>
+
+        <label for="messageInput">Pesan</label>
+        <textarea id="messageInput" rows="8" placeholder="Halo {{nama}}, ..."></textarea>
+
+        <div class="toolbar">
+          <span id="selectedCount">0 kontak dipilih</span>
+          <button class="btn" id="queueBroadcast">Masukkan ke antrean</button>
+        </div>
+
+        <div id="notice" class="notice hidden"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <h2>Riwayat antrean</h2>
+          <p>Pesan yang dibuat dari dashboard ini.</p>
+        </div>
+        <button class="btn secondary" id="clearQueue">Kosongkan antrean</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Waktu</th><th>Kontak</th><th>Pesan</th><th>Status</th></tr>
+          </thead>
+          <tbody id="queueTable"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Gunakan hanya untuk penerima yang telah memberikan izin menerima pesan.
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
